@@ -174,7 +174,7 @@
               <div class="h1-joule-head"><i class="joule-icon" aria-hidden="true"></i><div><strong>Joule</strong><span>Mission assistant · SAP AI Core</span></div><button type="button" id="h1-joule-float" class="h1-joule-float" title="Open Joule in a small window that floats on top of the Isaac Sim viewer (Chrome / Edge)">◳ Float over viewer</button></div>
               <p class="h1-hint">Or give Joule a mission: “Go to Rack 3, show me a wide view and come back to the start.” Joule plans on the live warehouse map; the robot finds its own route around the shelves.</p>
               <div class="h1-joule-presets" id="h1-joule-presets"></div>
-              <div class="h1-joule-row"><input id="h1-joule-goal" maxlength="300" placeholder="Tell the robot what to do…" /><button id="h1-joule-run" class="secondary-button"><i class="joule-icon" aria-hidden="true"></i>Ask Joule</button></div>
+              <div class="h1-joule-row"><input id="h1-joule-goal" maxlength="300" placeholder="Tell the robot what to do… or tap the mic" /><button type="button" id="h1-joule-mic" class="h1-mic" title="Speak to Joule" aria-label="Speak to Joule"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button><select id="h1-joule-lang" class="h1-lang" title="Language you speak in" aria-label="Voice language"><option value="en-US">EN</option><option value="es-MX">ES</option></select><button id="h1-joule-run" class="secondary-button"><i class="joule-icon" aria-hidden="true"></i>Ask Joule</button></div>
               <p class="h1-joule-answer" id="h1-joule-answer"></p>
               <ol class="h1-plan" id="h1-plan" hidden></ol>
             </div>
@@ -215,6 +215,6 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="/app.js?v=0.11.0-sap-orders"></script>
+    <script type="module" src="/app.js?v=0.12.0-joule-voice"></script>
   </body>
 </html>

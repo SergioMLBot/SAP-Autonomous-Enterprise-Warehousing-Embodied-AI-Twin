@@ -938,6 +938,40 @@ async function h1FloatJoule() {
   });
 }
 
+// Voice for Joule: the browser's speech recognition (Chrome / Edge) turns what you say into the
+// mission text; when you stop talking the mission goes to Joule like a typed one.
+function h1InitVoice() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = h1$("#h1-joule-mic"), lang = h1$("#h1-joule-lang");
+  if (!Recognition) { mic.disabled = true; mic.title = "Voice needs Chrome or Edge"; lang.hidden = true; return; }
+  try { lang.value = localStorage.getItem("h1-joule-lang") || "en-US"; } catch { /* private mode */ }
+  lang.addEventListener("change", () => { try { localStorage.setItem("h1-joule-lang", lang.value); } catch { /* private mode */ } });
+  let rec = null;
+  mic.addEventListener("click", () => {
+    if (rec) { rec.stop(); return; }
+    if (h1.running) return showToast("Finish or stop the active robot job first.");
+    const input = h1$("#h1-joule-goal"), answer = h1$("#h1-joule-answer");
+    let heard = "", failed = false;
+    rec = new Recognition();
+    Object.assign(rec, { lang: lang.value, interimResults: true, continuous: false, maxAlternatives: 1 });
+    mic.classList.add("listening"); mic.title = "Listening… tap to stop";
+    answer.classList.add("pending"); answer.textContent = lang.value.startsWith("es") ? "Te escucho… dime la misión del robot." : "Listening… say the mission for the robot.";
+    input.value = "";
+    rec.onresult = (event) => { heard = [...event.results].map((result) => result[0].transcript).join(" ").trim(); input.value = heard; };
+    rec.onerror = (event) => {
+      failed = true;
+      answer.textContent = event.error === "not-allowed" || event.error === "service-not-allowed" ? "Microphone blocked: allow it for this site to talk to Joule." : event.error === "no-speech" ? "I didn't hear anything. Tap the mic and try again." : `Voice unavailable (${event.error}). You can type the mission.`;
+    };
+    rec.onend = () => {
+      mic.classList.remove("listening"); mic.title = "Speak to Joule"; rec = null;
+      if (heard && !failed) return runH1Joule(heard);
+      answer.classList.remove("pending");
+      if (!failed) answer.textContent = "";
+    };
+    rec.start();
+  });
+}
+
 function initHumanoidLab() {
   h1$("#h1-train-run").addEventListener("click", runH1Train);
   h1$("#h1-deploy-run").addEventListener("click", runH1Deploy);
@@ -974,6 +1008,7 @@ function initHumanoidLab() {
   h1$("#h1-order-card").addEventListener("click", (event) => { const button = event.target.closest("[data-decision]"); if (button) h1DecideOrder(button.dataset.decision); });
   h1LoadOrders();
 
+  h1InitVoice();
   const goalInput = h1$("#h1-joule-goal");
   h1$("#h1-joule-run").addEventListener("click", () => runH1Joule(goalInput.value));
   goalInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); runH1Joule(goalInput.value); } });
