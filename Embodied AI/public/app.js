@@ -895,7 +895,9 @@ async function h1RefreshStatus() {
     }
     const version = status.map?.version || 0;
     if (version !== h1.mapVersion) { h1.mapVersion = version; h1LoadMap(); h1LoadOrders(); }
-    if (!h1.running) {
+    // another tab or a recipe may have started a robot job: look for it every ~4.5 s, not every tick
+    h1.activeTick = (h1.activeTick || 0) + 1;
+    if (!h1.running && h1.activeTick % 3 === 0) {
       const active = await api("/api/humanoid/active");
       if (active.length) h1Watch(active[0].id);
     }

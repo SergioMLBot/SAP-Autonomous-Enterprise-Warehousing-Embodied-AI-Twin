@@ -25,3 +25,4 @@ applications:
       DESKTOP_TENANT_ID: sap-embodied-ai-demo
       DESKTOP_USER_ID: desktop-owner
       DESKTOP_ROLE: admin
+      RATE_LIMIT_MAX: "600" # Mission view polls the robot every 1.5 s; model calls keep their own 15/min limit
