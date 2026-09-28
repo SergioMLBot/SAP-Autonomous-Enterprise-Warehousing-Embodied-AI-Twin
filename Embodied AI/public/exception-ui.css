@@ -49,3 +49,6 @@ div.exception-field { padding: 8px 10px; border: 1px solid #d6e0e8; border-radiu
 .exception-blockers.is-blocked { border: 1px solid #fcd34d; background: #fffbeb; color: #92400e; }
 .exception-blockers.is-ready { border: 1px solid #86efac; background: #f0fdf4; color: #15803d; }
 .exception-blockers[hidden] { display: none; }
+.exception-confirm { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.exception-confirm button { padding: 5px 12px; border: 1px solid #86efac; border-radius: 999px; background: #fff; color: #15803d; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.exception-confirm button:hover { background: #dcfce7; }
