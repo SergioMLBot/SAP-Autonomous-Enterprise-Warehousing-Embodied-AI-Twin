@@ -85,27 +85,16 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
     carry.set(context.scenarioId || "", structuredClone({ mode: state.mode, values: state.values }));
   }
   // what still blocks approval, in plain words, next to the Approve button
-  // Each unconfirmed check gets a one-click "= yes" button here: still an explicit human confirmation.
   function refresh() {
     const missing = [];
     const empty = [...textInputs.values()].flat().filter(input => !input.value.trim()).length;
     if (empty) missing.push(`fill ${empty} empty field${empty === 1 ? "" : "s"} (or use Fill with System Data)`);
-    const notYes = PHYSICAL_CHECKS.filter(key => physicalInputs.get(key).value !== "yes");
-    const label = key => ASSISTED_CHECKS[key]?.label || friendly(key);
-    if (notYes.length) missing.push(`confirm ${notYes.map(label).join(", ")}, only if true for this action`);
-    if (!review.checked) missing.push(notYes.length ? "then tick the review box" : "tick the review box");
+    const notYes = PHYSICAL_CHECKS.filter(key => physicalInputs.get(key).value !== "yes").map(key => ASSISTED_CHECKS[key]?.label || friendly(key));
+    if (notYes.length) missing.push(`set ${notYes.join(", ")} to yes (click each chip once you have confirmed it)`);
+    if (!review.checked) missing.push("tick the review box");
     blockersNote.hidden = !pendingId;
     blockersNote.className = `exception-blockers ${missing.length ? "is-blocked" : "is-ready"}`;
-    blockersNote.replaceChildren(element("span", "", missing.length ? `To approve: ${missing.join(" · ")}.` : "Ready: this single action can be approved."));
-    if (notYes.length) {
-      const actions = element("span", "exception-confirm");
-      for (const key of notYes) {
-        const button = element("button", "", `✓ ${label(key)} = yes`); button.type = "button";
-        button.addEventListener("click", () => { const input = physicalInputs.get(key); input.value = "yes"; paintChip(input); changed(); });
-        actions.append(button);
-      }
-      blockersNote.append(actions);
-    }
+    blockersNote.textContent = missing.length ? `To approve: ${missing.join(" · ")}.` : "Ready: this single action can be approved.";
     onChange();
   }
   function changed() { review.checked = false; save(); refresh(); }
