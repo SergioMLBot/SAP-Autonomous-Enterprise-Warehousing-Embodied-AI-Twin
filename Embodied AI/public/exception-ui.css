@@ -19,3 +19,27 @@
 #approval-panel > .exception-controls { flex: 1 1 100%; order: 1; width: 100%; }
 #approval-panel:has(.exception-controls) > .approval-buttons { order: 2; }
 @media (max-width: 700px) { .exception-grid, .exception-physical, .exception-proof-grid { grid-template-columns: 1fr; } .exception-controls, .exception-proof { padding: 12px; } }
+/* Assisted Mode: Empty Blanks / Fill with System Data toggle, sub-entry fields, status chips */
+.assisted-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 14px; padding: 10px 12px; border: 1px solid #e4dcff; border-radius: 12px; background: linear-gradient(180deg, #fff 0%, #faf8ff 100%); }
+.assisted-label { margin-right: 4px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #5b3fd6; }
+.assisted-toggle button { padding: 6px 14px; border: 1px solid #c9b8ff; border-radius: 999px; background: #fff; color: #5b3fd6; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.assisted-toggle button:hover { background: #f5f1ff; }
+.assisted-toggle button.active { border-color: transparent; background: linear-gradient(135deg, #a374ff 0%, #5b3fd6 100%); color: #fff; }
+.assisted-toggle button:disabled { opacity: .45; cursor: not-allowed; }
+.assisted-hint { flex-basis: 100%; font-size: 11px; line-height: 1.45; color: #6a7b8c; }
+.exception-field textarea::placeholder { color: #9aa7b3; font-style: italic; }
+div.exception-field { padding: 8px 10px; border: 1px solid #d6e0e8; border-radius: 8px; background: #fff; }
+.exception-field-title { font-size: 12px; font-weight: 600; }
+.exception-sub { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 10.5px; font-weight: 600; color: #6a7b8c; }
+.exception-sub textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #afbdc9; border-radius: 6px; background: white; color: #23384a; font: inherit; font-size: 12px; font-weight: 400; resize: vertical; }
+.exception-sub textarea::placeholder { color: #9aa7b3; font-style: italic; }
+.exception-sep { width: 100%; margin: 3px 0; border: 0; border-top: 1px dashed #c9d4dd; }
+.exception-check { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; font-size: 12px; font-weight: 600; }
+.exception-chip { appearance: none; -webkit-appearance: none; min-width: 128px; padding: 4px 12px; border: 1px solid #d4dde5; border-radius: 999px; background: #eef2f5; color: #6a7b8c; font: inherit; font-size: 11px; font-weight: 700; text-align: center; text-align-last: center; cursor: pointer; }
+.exception-chip.is-empty { font-style: italic; font-weight: 500; }
+.exception-chip.is-yes { border-color: #86efac; background: #dcfce7; color: #15803d; }
+.exception-chip.is-no { border-color: #fda4af; background: #ffe4e6; color: #be123c; }
+.exception-chip.is-unknown { border-color: #fcd34d; background: #fef3c7; color: #b45309; }
+.exception-chip:focus-visible { outline: 2px solid #5b3fd6; outline-offset: 2px; }
+/* text grows with its content (Chrome / Edge); other browsers keep the fixed rows and scroll */
+.exception-field textarea, .exception-sub textarea { field-sizing: content; min-height: 2.4em; max-height: 14em; }

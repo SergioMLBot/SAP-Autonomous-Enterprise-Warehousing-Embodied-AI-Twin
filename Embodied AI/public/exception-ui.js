@@ -8,7 +8,12 @@
  * A record is {status, binding:{jobId,actionKind}, resolutionProof:{checks}, proofHash}.
  * GET may return null when unsaved; POST sends only {checks}. Proof is never inferred
  * from job completion or synthetic samples. See src/exception-resolution.mjs contract.
+ * Assisted Mode (assisted_mode_template 1.md): a two-state toggle, "Empty Blanks" (default,
+ * placeholders only) and "Fill with System Data" (template values injected verbatim). Fields with
+ * several sub-entries stay in one container split by dividers and are sent as one
+ * "label: value" block per field. Checks render as status chips; an unset chip is sent as unknown.
  */
+import { ASSISTED_FIELDS, ASSISTED_CHECKS } from "./assisted-mode-data.js";
 export const EXCEPTION_FIELDS = Object.freeze([
   "Business Object", "Process", "Exception Type", "Business Impact", "Urgency",
   "Root Cause Candidates", "Physical Dependency", "Physical Location", "Required Outcome",
@@ -50,41 +55,80 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
   physical.append(element("legend", "", "Physical resolvability — every unknown/no blocks simulated approval"));
   const review = element("input"); review.type = "checkbox";
   const reviewLabel = element("label", "exception-review"); reviewLabel.append(review, document.createTextNode(" I explicitly reviewed these values for this single action / TN. This is simulation only."));
-  root.append(title, notice, routes, grid, physical, reviewLabel); root.hidden = true; draftHost.append(root);
+  // Assisted Mode toggle: Empty Blanks (default) ↔ Fill with System Data
+  const toggle = element("div", "assisted-toggle"), emptyButton = element("button", "", "Empty Blanks"), fillButton = element("button", "", "Fill with System Data");
+  emptyButton.type = "button"; fillButton.type = "button";
+  toggle.append(element("span", "assisted-label", "Assisted Mode"), emptyButton, fillButton,
+    element("span", "assisted-hint", "System data: production order 1000524 · operation 0010 · plant 0001. Action Safe and Action Authorized stay unknown until a person confirms them for this action."));
+  root.append(title, notice, routes, toggle, grid, physical, reviewLabel); root.hidden = true; draftHost.append(root);
+  let mode = "empty";
+  const systemValues = () => Object.fromEntries(EXCEPTION_FIELDS.map(key => [key, (ASSISTED_FIELDS[key] || []).map(entry => entry.value)]));
+  const systemChecks = () => Object.fromEntries(PHYSICAL_CHECKS.map(key => [key, ASSISTED_CHECKS[key]?.value || ""]));
+  function paintMode() {
+    emptyButton.className = mode === "empty" ? "active" : ""; fillButton.className = mode === "filled" ? "active" : "";
+    emptyButton.setAttribute("aria-pressed", String(mode === "empty")); fillButton.setAttribute("aria-pressed", String(mode === "filled"));
+  }
+  const paintChip = input => { input.className = `exception-chip is-${input.value || "empty"}`; };
+  function snapshot() {
+    return { mode, values: Object.fromEntries([...textInputs].map(([key, list]) => [key, list.map(input => input.value)])),
+      checks: Object.fromEntries([...physicalInputs].map(([key, input]) => [key, input.value])) };
+  }
+  function apply(state) {
+    for (const [key, list] of textInputs) list.forEach((input, index) => { input.value = state.values?.[key]?.[index] ?? ""; });
+    for (const [key, input] of physicalInputs) { input.value = state.checks?.[key] ?? ""; paintChip(input); }
+    mode = state.mode || "empty"; paintMode();
+  }
   function save() {
     if (!currentKey) return;
-    const draft = getDraft(); drafts.set(currentKey, draft);
-    carry.set(context.scenarioId || "", structuredClone(draft.exceptionFingerprint));
+    const state = snapshot(); drafts.set(currentKey, state);
+    carry.set(context.scenarioId || "", structuredClone({ mode: state.mode, values: state.values }));
   }
   function changed() { review.checked = false; save(); onChange(); }
   for (const name of EXCEPTION_FIELDS) {
-    const input = element("textarea"); input.maxLength = 1200; input.rows = 2; input.autocomplete = "off"; input.spellcheck = false;
-    input.placeholder = `${name} — required for approval`; input.addEventListener("input", changed);
-    textInputs.set(name, field(grid, name, input));
+    const entries = ASSISTED_FIELDS[name] || [{ label: null, placeholder: `${name} — required for approval` }], multi = entries.length > 1;
+    const box = element(multi ? "div" : "label", "exception-field", multi ? "" : name);
+    if (multi) box.append(element("span", "exception-field-title", name));
+    const list = entries.map((entry, index) => {
+      const input = element("textarea"); input.maxLength = 1200; input.rows = multi ? 1 : 2; input.autocomplete = "off"; input.spellcheck = false;
+      input.placeholder = entry.placeholder; input.addEventListener("input", changed);
+      if (!multi) { box.append(input); return input; }
+      if (index) box.append(element("hr", "exception-sep"));
+      const sub = element("label", "exception-sub", entry.label); sub.append(input); box.append(sub);
+      return input;
+    });
+    grid.append(box); textInputs.set(name, list);
   }
   for (const key of PHYSICAL_CHECKS) {
-    const input = select(["unknown", "yes", "no"]); input.addEventListener("change", changed);
-    physicalInputs.set(key, field(physical, friendly(key), input));
+    const input = element("select");
+    for (const [value, text] of [["", ASSISTED_CHECKS[key]?.placeholder || "yes / no / unknown"], ["yes", "yes"], ["no", "no"], ["unknown", "unknown"]]) { const option = element("option", "", text); option.value = value; input.append(option); }
+    input.addEventListener("change", () => { paintChip(input); changed(); });
+    const row = element("label", "exception-check", ASSISTED_CHECKS[key]?.label || friendly(key)); row.append(input); physical.append(row);
+    physicalInputs.set(key, input); paintChip(input);
   }
+  emptyButton.addEventListener("click", () => { apply({ mode: "empty" }); changed(); });
+  fillButton.addEventListener("click", () => { apply({ mode: "filled", values: systemValues(), checks: systemChecks() }); changed(); });
+  paintMode();
   review.addEventListener("change", onChange);
+  // one string per field for the server: sub-entries as "label: value" lines split by ---
+  const compose = (key, values) => values.length > 1 ? values.map((value, index) => value.trim() ? `${ASSISTED_FIELDS[key][index].label}: ${value.trim()}` : "").filter(Boolean).join("\n---\n") : values[0];
   function getDraft() {
-    return { exceptionFingerprint: Object.fromEntries([...textInputs].map(([key, input]) => [key, input.value])),
-      physicalResolvability: Object.fromEntries([...physicalInputs].map(([key, input]) => [key, input.value])) };
+    return { exceptionFingerprint: Object.fromEntries([...textInputs].map(([key, list]) => [key, compose(key, list.map(input => input.value))])),
+      physicalResolvability: Object.fromEntries([...physicalInputs].map(([key, input]) => [key, input.value || "unknown"])) };
   }
   function load(action) {
     save(); context = { ...action };
     currentKey = JSON.stringify([action.scenarioId || "", action.stepId || "", action.transitionId || "", action.command || ""]);
-    const draft = structuredClone(drafts.get(currentKey) || defaultExceptionDraft());
-    if (!drafts.has(currentKey) && carry.has(action.scenarioId || "")) draft.exceptionFingerprint = structuredClone(carry.get(action.scenarioId || ""));
-    for (const [key, input] of textInputs) input.value = draft.exceptionFingerprint[key];
-    for (const [key, input] of physicalInputs) input.value = draft.physicalResolvability[key];
+    // a new action keeps the scenario's text; checks never carry over, only the system data does
+    const carried = carry.get(action.scenarioId || "");
+    apply(structuredClone(drafts.get(currentKey) || (carried ? { ...carried, checks: carried.mode === "filled" ? systemChecks() : {} } : { mode: "empty" })));
     review.checked = false; root.hidden = false;
     title.textContent = `${action.stepId || "Action"}${action.transitionId ? ` / ${action.transitionId}` : ""} · ${action.label || "Exception fingerprint"} · simulation only`;
   }
   function canApprove() {
-    return Boolean(pendingId && review.checked && [...textInputs.values()].every(input => input.value.trim() && input.value.length <= 1200) && [...physicalInputs.values()].every(input => input.value === "yes"));
+    const draft = getDraft().exceptionFingerprint;
+    return Boolean(pendingId && review.checked && [...textInputs.values()].every(list => list.every(input => input.value.trim())) && Object.values(draft).every(value => value.length <= 1200) && [...physicalInputs.values()].every(input => input.value === "yes"));
   }
-  function editability() { for (const input of root.querySelectorAll("input, textarea, select")) input.disabled = running && !pendingId; }
+  function editability() { for (const input of root.querySelectorAll("input, textarea, select, button")) input.disabled = running && !pendingId; }
   const proof = element("section", "exception-proof"), proofTitle = element("h3", "", "Resolution proof · simulation only");
   const proofNotice = element("p", "exception-notice", "Execution completion is not exception resolution. Enter evidence references explicitly; synthetic events do not auto-pass any check. This local hash is not a signature or safety certificate. Never enter secrets or signed URLs.");
   const proofStatus = element("p", "exception-proof-status", "awaiting_evidence"), proofGrid = element("div", "exception-proof-grid");

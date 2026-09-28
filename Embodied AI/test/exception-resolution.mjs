@@ -148,3 +148,35 @@ test("UI retains drafts, resets each action review, protects pending binding, GE
     editor.clearProof(); await submit.onclick(); assert.equal(calls.length, 2);
   } finally { globalThis.document = previous; }
 });
+
+test("Assisted Mode: Empty Blanks by default, Fill with System Data injects the template verbatim, server accepts it", async () => {
+  const { ASSISTED_FIELDS, ASSISTED_CHECKS } = await import("../public/assisted-mode-data.js");
+  const previous = globalThis.document;
+  globalThis.document = { createElement: tag => new Element(tag), createTextNode: () => new Element("text") };
+  try {
+    const approvalHost = new Element("div"), draftHost = new Element("div"), proofHost = new Element("div");
+    const editor = ui.createExceptionUI({ api: async () => null, approvalHost, draftHost, proofHost });
+    editor.beginApproval({ ...action, approvalId: "assisted" });
+    const textareas = approvalHost.querySelectorAll("textarea"), chips = approvalHost.querySelectorAll("select");
+    assert.equal(textareas.length, Object.values(ASSISTED_FIELDS).reduce((n, entries) => n + entries.length, 0));
+    assert.ok(textareas.every(input => input.value === "") && chips.every(chip => chip.value === ""), "starts in Empty Blanks");
+    assert.equal(textareas[0].placeholder, ASSISTED_FIELDS["Business Object"][0].placeholder);
+    assert.ok(Object.values(editor.getDraft().physicalResolvability).every(state => state === "unknown"), "unset chips are sent as unknown");
+    const [emptyButton, fillButton] = approvalHost.querySelectorAll("button");
+    fillButton.listeners.click();
+    const draft = editor.getDraft();
+    assert.equal(draft.exceptionFingerprint["Business Impact"], ASSISTED_FIELDS["Business Impact"][0].value);
+    assert.equal(draft.exceptionFingerprint["Business Object"], "Production Order / Operation: Production Order 1000524 / Operation 0010\n---\nMaterial: HKE-SERIAL_QM\n---\nPlant: 0001");
+    assert.deepEqual(draft.physicalResolvability, Object.fromEntries(PHYSICAL_CHECKS.map(key => [key, ASSISTED_CHECKS[key].value])));
+    approvalHost.querySelectorAll("input")[0].checked = true;
+    assert.equal(editor.canApprove(), false, "Action Safe / Action Authorized stay unknown until a person confirms them");
+    for (const key of ["actionSafe", "actionAuthorized"]) chips[PHYSICAL_CHECKS.indexOf(key)].value = "yes";
+    assert.equal(editor.canApprove(), true);
+    const payload = editor.approvalPayload();
+    const reviewed = validateExceptionReview({ exceptionFingerprint: payload.exceptionFingerprint, physicalResolvability: payload.physicalResolvability }, { ...action, approvalId: "assisted", cycle: 1, nodeId: "n1", command: "cmd" });
+    assert.equal(reviewed.exceptionFingerprint.Constraints.split("\n---\n").length, ASSISTED_FIELDS.Constraints.length);
+    emptyButton.listeners.click();
+    assert.ok(textareas.every(input => input.value === "") && chips.every(chip => chip.value === ""), "Empty Blanks clears every value");
+    assert.equal(editor.canApprove(), false);
+  } finally { globalThis.document = previous; }
+});
