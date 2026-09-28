@@ -43,3 +43,9 @@ div.exception-field { padding: 8px 10px; border: 1px solid #d6e0e8; border-radiu
 .exception-chip:focus-visible { outline: 2px solid #5b3fd6; outline-offset: 2px; }
 /* text grows with its content (Chrome / Edge); other browsers keep the fixed rows and scroll */
 .exception-field textarea, .exception-sub textarea { field-sizing: content; min-height: 2.4em; max-height: 14em; }
+/* chips are clickable: a caret, and a plain-words note of what still blocks approval */
+.exception-chip, .exception-chip.is-empty, .exception-chip.is-yes, .exception-chip.is-no, .exception-chip.is-unknown { padding-right: 26px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23556' stroke-width='1.6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 9px 6px; }
+.exception-blockers { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.45; }
+.exception-blockers.is-blocked { border: 1px solid #fcd34d; background: #fffbeb; color: #92400e; }
+.exception-blockers.is-ready { border: 1px solid #86efac; background: #f0fdf4; color: #15803d; }
+.exception-blockers[hidden] { display: none; }

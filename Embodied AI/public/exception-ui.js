@@ -60,7 +60,8 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
   emptyButton.type = "button"; fillButton.type = "button";
   toggle.append(element("span", "assisted-label", "Assisted Mode"), emptyButton, fillButton,
     element("span", "assisted-hint", "System data: production order 1000524 · operation 0010 · plant 0001. Action Safe and Action Authorized stay unknown until a person confirms them for this action."));
-  root.append(title, notice, routes, toggle, grid, physical, reviewLabel); root.hidden = true; draftHost.append(root);
+  const blockersNote = element("p", "exception-blockers"); blockersNote.setAttribute("role", "status");
+  root.append(title, notice, routes, toggle, grid, physical, reviewLabel, blockersNote); root.hidden = true; draftHost.append(root);
   let mode = "empty";
   const systemValues = () => Object.fromEntries(EXCEPTION_FIELDS.map(key => [key, (ASSISTED_FIELDS[key] || []).map(entry => entry.value)]));
   const systemChecks = () => Object.fromEntries(PHYSICAL_CHECKS.map(key => [key, ASSISTED_CHECKS[key]?.value || ""]));
@@ -83,7 +84,20 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
     const state = snapshot(); drafts.set(currentKey, state);
     carry.set(context.scenarioId || "", structuredClone({ mode: state.mode, values: state.values }));
   }
-  function changed() { review.checked = false; save(); onChange(); }
+  // what still blocks approval, in plain words, next to the Approve button
+  function refresh() {
+    const missing = [];
+    const empty = [...textInputs.values()].flat().filter(input => !input.value.trim()).length;
+    if (empty) missing.push(`fill ${empty} empty field${empty === 1 ? "" : "s"} (or use Fill with System Data)`);
+    const notYes = PHYSICAL_CHECKS.filter(key => physicalInputs.get(key).value !== "yes").map(key => ASSISTED_CHECKS[key]?.label || friendly(key));
+    if (notYes.length) missing.push(`set ${notYes.join(", ")} to yes (click each chip once you have confirmed it)`);
+    if (!review.checked) missing.push("tick the review box");
+    blockersNote.hidden = !pendingId;
+    blockersNote.className = `exception-blockers ${missing.length ? "is-blocked" : "is-ready"}`;
+    blockersNote.textContent = missing.length ? `To approve: ${missing.join(" · ")}.` : "Ready: this single action can be approved.";
+    onChange();
+  }
+  function changed() { review.checked = false; save(); refresh(); }
   for (const name of EXCEPTION_FIELDS) {
     const entries = ASSISTED_FIELDS[name] || [{ label: null, placeholder: `${name} — required for approval` }], multi = entries.length > 1;
     const box = element(multi ? "div" : "label", "exception-field", multi ? "" : name);
@@ -108,7 +122,7 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
   emptyButton.addEventListener("click", () => { apply({ mode: "empty" }); changed(); });
   fillButton.addEventListener("click", () => { apply({ mode: "filled", values: systemValues(), checks: systemChecks() }); changed(); });
   paintMode();
-  review.addEventListener("change", onChange);
+  review.addEventListener("change", refresh);
   // one string per field for the server: sub-entries as "label: value" lines split by ---
   const compose = (key, values) => values.length > 1 ? values.map((value, index) => value.trim() ? `${ASSISTED_FIELDS[key][index].label}: ${value.trim()}` : "").filter(Boolean).join("\n---\n") : values[0];
   function getDraft() {
@@ -179,9 +193,9 @@ export function createExceptionUI({ api, approvalHost, draftHost, proofHost, onC
     finally { if (generation === proofGeneration) busy(false); }
   };
   return {
-    selectAction(action) { if (pendingId || running) return false; load(action); reviewLabel.hidden = true; draftHost.append(root); editability(); onChange(); return true; },
-    beginApproval(event) { if (pendingId === event.approvalId) return; load(event); pendingId = event.approvalId; reviewLabel.hidden = false; approvalHost.append(root); editability(); onChange(); },
-    endApproval() { save(); pendingId = null; review.checked = false; reviewLabel.hidden = true; draftHost.append(root); editability(); onChange(); },
+    selectAction(action) { if (pendingId || running) return false; load(action); reviewLabel.hidden = true; draftHost.append(root); editability(); refresh(); return true; },
+    beginApproval(event) { if (pendingId === event.approvalId) return; load(event); pendingId = event.approvalId; reviewLabel.hidden = false; approvalHost.append(root); editability(); refresh(); },
+    endApproval() { save(); pendingId = null; review.checked = false; reviewLabel.hidden = true; draftHost.append(root); editability(); refresh(); },
     setRunning(value) { running = Boolean(value); editability(); },
     getDraft, canApprove,
     approvalPayload() { if (!canApprove()) throw new Error("Complete all 15 fields, set all seven checks to yes and explicitly review this action."); return { approvalId: pendingId, ...getDraft() }; },

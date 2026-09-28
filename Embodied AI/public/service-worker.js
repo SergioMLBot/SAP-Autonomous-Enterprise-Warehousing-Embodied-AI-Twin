@@ -1,4 +1,4 @@
-const CACHE = "sap-embodied-ai-v16";
+const CACHE = "sap-embodied-ai-v17";
 const SHELL = ["/", "/styles.css", "/workspace.css", "/editor-ui.css", "/app.js?v=0.12.0-joule-voice", "/editor-core.js", "/robot-models.js", "/mesh-assets.js", "/webgl-world.js", "/manifest.webmanifest"];
 self.addEventListener("install", event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate", event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("sap-embodied-ai-")&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
